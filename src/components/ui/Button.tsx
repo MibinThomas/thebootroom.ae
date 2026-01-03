@@ -1,0 +1,2 @@
+import { cn } from "@/lib/utils/cn";
+export function Button({className,variant="primary",...props}:React.ButtonHTMLAttributes<HTMLButtonElement>&{variant?:"primary"|"outline"}){return <button className={cn("inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold transition shadow-soft",variant==="primary"&&"bg-bootred text-white hover:opacity-95",variant==="outline"&&"bg-white text-bootred border border-bootred/30 hover:bg-white/80",className)} {...props} />;}

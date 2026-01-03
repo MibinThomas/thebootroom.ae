@@ -18,4 +18,7 @@ export type TeamPayload = {
   players: Player[];
   logoFileName: string;
   brandGuidelinesFileName?: string;
+  logoUrl: string;
+  logoKey: string;
+
 };

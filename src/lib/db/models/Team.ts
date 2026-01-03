@@ -7,6 +7,9 @@ const PlayerSchema = new Schema(
     position: { type: String, required: true },
     jerseySize: { type: String, enum: ["S", "M", "L", "XL", "XXL"], required: true },
     phone: { type: String, required: true },
+    logoUrl: { type: String, required: true },
+    logoKey: { type: String, required: true },
+
   },
   { _id: false }
 );

@@ -10,10 +10,10 @@ function fileToDataUrl(absPath: string, mime: string) {
   return `data:${mime};base64,${buf.toString("base64")}`;
 }
 
-export async function buildTicketPdfBuffer(team: TeamPayload) {
-  const qrValue = `bootroom:team:${team.teamNumber}`; // QR payload parsed by /api/verify
-
-  const qrDataUrl = await makeQrDataUrl(qrValue);
+export async function buildTicketPdfBuffer(team: TeamPayload, teamToken: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const verifyUrl = `${baseUrl}/verify?code=${encodeURIComponent(teamToken)}`;
+  const qrDataUrl = await makeQrDataUrl(verifyUrl);
 
   const publicDir = path.join(process.cwd(), "public");
   const logoPath = path.join(publicDir, "bootroom-logo.png");
@@ -22,7 +22,10 @@ export async function buildTicketPdfBuffer(team: TeamPayload) {
   const logoDataUrl = fs.existsSync(logoPath) ? fileToDataUrl(logoPath, "image/png") : undefined;
   const bannerDataUrl = fs.existsSync(bannerPath) ? fileToDataUrl(bannerPath, "image/png") : undefined;
 
-  const blob = await pdf(<TicketDoc team={team} qrDataUrl={qrDataUrl} logoDataUrl={logoDataUrl} bannerDataUrl={bannerDataUrl} />).toBlob();
+  const blob = await pdf(
+    <TicketDoc team={team} qrDataUrl={qrDataUrl} logoDataUrl={logoDataUrl} bannerDataUrl={bannerDataUrl} />
+  ).toBlob();
+
   const arrayBuffer = await blob.arrayBuffer();
   return Buffer.from(arrayBuffer);
 }

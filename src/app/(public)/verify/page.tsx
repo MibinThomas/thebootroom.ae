@@ -151,7 +151,7 @@ export default function VerifyPage() {
         ) : null}
 
         <p className="mt-6 text-xs text-black/50">
-          Expected QR payload format: <code>bootroom:team:1001</code>.
+          Expected QR token format: <code>bootroom:team:1001</code>.
         </p>
       </div>
     </main>

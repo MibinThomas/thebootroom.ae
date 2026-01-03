@@ -1,16 +1,24 @@
 "use server";
+
 import { registerTeamUiSchema } from "@/lib/validators/registerTeamUiSchema";
-import { putTeamPayload } from "@/lib/tickets/store";
 import type { TeamPayload } from "@/lib/tickets/types";
+import { dbConnect } from "@/lib/db/mongoose";
+import { Team } from "@/lib/db/models/Team";
 import { signTeamToken } from "@/lib/utils/security";
 
-let teamCounter = 1000;
+async function nextTeamNumber() {
+  const last = await Team.findOne({}, { teamNumber: 1 }).sort({ teamNumber: -1 }).lean();
+  return (last?.teamNumber ?? 1000) + 1;
+}
 
 export async function createTicketAction(raw: unknown) {
   const data = registerTeamUiSchema.parse(raw);
-  teamCounter += 1;
-  const team: TeamPayload = {
-    teamNumber: teamCounter,
+
+  await dbConnect();
+  const teamNumber = await nextTeamNumber();
+
+  const teamData: Omit<TeamPayload, "id"> = {
+    teamNumber,
     companyName: data.companyName,
     email: data.email,
     managerName: data.managerName,
@@ -21,7 +29,9 @@ export async function createTicketAction(raw: unknown) {
     logoFileName: data.logoPng.name,
     brandGuidelinesFileName: data.brandGuidelinesPdf?.name,
   };
-  putTeamPayload(team);
-  const token = signTeamToken({ teamNumber: team.teamNumber, iat: Date.now() });
-  return { token, teamNumber: team.teamNumber };
+
+  const created = await Team.create(teamData as any);
+  const token = signTeamToken({ tid: String(created._id), teamNumber, iat: Date.now() });
+
+  return { token, teamNumber };
 }

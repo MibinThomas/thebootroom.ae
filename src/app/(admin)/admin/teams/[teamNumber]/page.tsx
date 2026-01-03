@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getTeamPayloadByNumber } from "@/lib/tickets/store";
+import { getTeamByNumber } from "@/lib/tickets/store";
 
 export const runtime = "nodejs";
 
@@ -10,13 +10,13 @@ export default async function AdminTeamDetailsPage({
 }) {
   const { teamNumber } = await params;
   const num = Number(teamNumber);
-  const team = Number.isFinite(num) ? getTeamPayloadByNumber(num) : null;
+  const team = Number.isFinite(num) ? await getTeamByNumber(num) : null;
 
   if (!team) {
     return (
       <div className="rounded-2xl border border-black/10 bg-white/80 backdrop-blur shadow-soft p-6">
         <h1 className="font-display text-2xl text-bootred">Team Not Found</h1>
-        <p className="mt-2 text-sm text-black/60">Team number is invalid or not in the dev store.</p>
+        <p className="mt-2 text-sm text-black/60">Team number is invalid or not found in MongoDB.</p>
         <div className="mt-5">
           <Link href="/admin/teams" className="text-bootred font-semibold hover:underline">
             Back to Teams

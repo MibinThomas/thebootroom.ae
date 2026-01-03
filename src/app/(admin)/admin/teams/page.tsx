@@ -3,18 +3,17 @@ import { listTeams } from "@/lib/tickets/store";
 import TeamsTableClient from "@/components/admin/TeamsTableClient";
 
 export const metadata = { title: "Teams | Admin | The Bootroom" };
+export const runtime = "nodejs";
 
-export default function AdminTeamsPage() {
-  const teams = listTeams();
+export default async function AdminTeamsPage() {
+  const teams = await listTeams();
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl text-bootred">Teams</h1>
-          <p className="text-sm text-black/60">
-            Search, filter and manage registrations (dev in-memory store).
-          </p>
+          <p className="text-sm text-black/60">Search, filter and manage registrations (MongoDB).</p>
         </div>
 
         <div className="flex gap-3 flex-wrap">

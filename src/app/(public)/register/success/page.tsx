@@ -6,7 +6,7 @@ export default async function SuccessPage({ searchParams }:{ searchParams: Promi
     <main className="min-h-screen flex items-center justify-center p-6">
       <div className="max-w-xl w-full bg-white/80 backdrop-blur rounded-2xl shadow-soft border border-black/10 p-8">
         <h1 className="font-display text-3xl text-bootred">Registration Received</h1>
-        <p className="mt-3 text-sm text-black/70">Your ticket PDF is ready. Download it and keep it for entry verification.</p>
+        <p className="mt-3 text-sm text-black/70">Your ticket PDF is ready. Download it and keep it for entry verification. The QR on the ticket opens the team details page for check-in.</p>
         {token ? (
           <div className="mt-5 rounded-2xl border border-black/10 bg-cream p-4">
             <div className="text-xs text-black/60">Ticket Download</div>

@@ -26,7 +26,7 @@ export async function dbConnect() {
   if (!globalWithMongoose.mongoose.promise) {
     globalWithMongoose.mongoose.promise = mongoose
       .connect(MONGODB_URI, {
-        dbName: "thebootroom",
+        dbName: "bootroom_admin",
         bufferCommands: false,
       })
       .then((m) => m);

@@ -4,34 +4,35 @@ import { verifyAdminSession } from "@/lib/admin/session";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const isAdminPage = pathname.startsWith("/admin");
   const isAdminApi = pathname.startsWith("/api/admin");
+
+  // ✅ Protect admin pages except login
+  const isAdminPage =
+    pathname.startsWith("/admin") &&
+    pathname !== "/admin/login" &&
+    pathname !== "/admin/logout";
 
   if (isAdminPage || isAdminApi) {
     const token = req.cookies.get("br_admin")?.value;
 
-    // No session cookie
+    // not logged in → redirect to login (for pages) or 401 (for api)
     if (!token) {
-      if (isAdminApi) {
-        return new NextResponse("Unauthorized", { status: 401 });
-      }
-
+      if (isAdminApi) return new NextResponse("Unauthorized", { status: 401 });
       const url = req.nextUrl.clone();
       url.pathname = "/admin/login";
       return NextResponse.redirect(url);
     }
 
-    // Verify admin session (Edge-safe + async)
     const session = await verifyAdminSession(token);
 
     if (!session) {
-      if (isAdminApi) {
-        return new NextResponse("Unauthorized", { status: 401 });
-      }
+      // clear bad cookie to stop loops
+      const res = isAdminApi
+        ? new NextResponse("Unauthorized", { status: 401 })
+        : NextResponse.redirect(new URL("/admin/login", req.url));
 
-      const url = req.nextUrl.clone();
-      url.pathname = "/admin/login";
-      return NextResponse.redirect(url);
+      res.cookies.set("br_admin", "", { path: "/", maxAge: 0 });
+      return res;
     }
   }
 

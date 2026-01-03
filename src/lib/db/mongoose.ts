@@ -1,12 +1,5 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  // This makes TypeScript + runtime safe for Vercel builds
-  throw new Error("Please define the MONGODB_URI environment variable in Vercel / .env.local");
-}
-
 type MongooseGlobal = typeof globalThis & {
   mongoose: {
     conn: typeof mongoose | null;
@@ -20,13 +13,25 @@ if (!globalWithMongoose.mongoose) {
   globalWithMongoose.mongoose = { conn: null, promise: null };
 }
 
+function getMongoUri(): string {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error(
+      "MONGODB_URI is missing. Add it in Vercel → Project → Settings → Environment Variables."
+    );
+  }
+  return uri; // ✅ TypeScript now knows this is string
+}
+
 export async function dbConnect() {
   if (globalWithMongoose.mongoose.conn) return globalWithMongoose.mongoose.conn;
 
   if (!globalWithMongoose.mongoose.promise) {
+    const uri = getMongoUri(); // ✅ string
+
     globalWithMongoose.mongoose.promise = mongoose
-      .connect(MONGODB_URI, {
-        dbName: "bootroom_admin",
+      .connect(uri, {
+        dbName: "thebootroom",
         bufferCommands: false,
       })
       .then((m) => m);

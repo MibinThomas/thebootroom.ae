@@ -14,8 +14,13 @@ function toPayload(doc: any): TeamPayload {
     captainName: doc.captainName,
     captainPhone: doc.captainPhone,
     players: doc.players,
+
+    // ✅ add these two fields (new)
+    logoUrl: doc.logoUrl,
+    logoKey: doc.logoKey,
+
     logoFileName: doc.logoFileName,
-    brandGuidelinesFileName: doc.brandGuidelinesFileName || undefined,
+    brandGuidelinesFileName: doc.brandGuidelinesFileName,
   };
 }
 

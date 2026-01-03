@@ -19,6 +19,6 @@ export type TeamPayload = {
   logoFileName: string;
   brandGuidelinesFileName?: string;
   logoUrl: string;
-  logoKey: string;
+logoKey: string;
 
 };

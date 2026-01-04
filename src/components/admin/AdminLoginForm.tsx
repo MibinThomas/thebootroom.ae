@@ -25,11 +25,19 @@ export default function AdminLoginForm() {
     };
 
     try {
-      await adminLoginAction(payload);
+      const res = await adminLoginAction(payload);
+
+      if (!res?.ok) {
+        setError(res?.message || "Login failed.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ force navigation after login
       router.push("/admin/teams");
+      router.refresh();
     } catch (err: any) {
-      // adminLoginAction throws on invalid login (best practice)
-      setError(err?.message || "Invalid login. Please try again.");
+      setError(err?.message || "Something went wrong. Try again.");
       setLoading(false);
     }
   }
@@ -46,7 +54,7 @@ export default function AdminLoginForm() {
 
       <Field>
         <Label>Email</Label>
-        <Input name="email" type="email" placeholder="admin@thebootroom.com" required />
+        <Input name="email" type="email" placeholder="admin@thebootroom.ae" required />
       </Field>
 
       <Field>

@@ -10,36 +10,45 @@ const schema = z.object({
 });
 
 export async function adminLoginAction(raw: unknown) {
-  const { email, password } = schema.parse(raw);
+  try {
+    const { email, password } = schema.parse(raw);
 
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    const secret = process.env.ADMIN_AUTH_SECRET;
 
-  if (!adminEmail || !adminPassword) {
-    throw new Error("Missing ADMIN_EMAIL / ADMIN_PASSWORD in environment variables");
+    if (!adminEmail || !adminPassword || !secret) {
+      return {
+        ok: false,
+        message:
+          "Missing ADMIN_EMAIL / ADMIN_PASSWORD / ADMIN_AUTH_SECRET in Vercel Environment Variables.",
+      };
+    }
+
+    if (email !== adminEmail || password !== adminPassword) {
+      return { ok: false, message: "Invalid admin email or password." };
+    }
+
+    const token = await signAdminSession({ email, iat: Date.now() });
+
+    const jar = await cookies();
+    jar.set("br_admin", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return { ok: true, message: "Logged in" };
+  } catch (err: any) {
+    return { ok: false, message: err?.message || "Login failed" };
   }
-
-  if (email !== adminEmail || password !== adminPassword) {
-    throw new Error("Invalid admin credentials");
-  }
-
-  const token = await signAdminSession({ email, iat: Date.now() });
-
-  const cookieStore = await cookies();
-  cookieStore.set("admin_session", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
-
-  return { ok: true };
 }
 
 export async function adminLogoutAction() {
-  const cookieStore = await cookies();
-  cookieStore.set("admin_session", "", {
+  const jar = await cookies();
+  jar.set("br_admin", "", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

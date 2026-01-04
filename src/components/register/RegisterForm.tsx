@@ -4,12 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  registerTeamUiSchema,
-  type RegisterTeamUiInput,
-} from "@/lib/validators/registerTeamUiSchema";
+
+import { registerTeamUiSchema, type RegisterTeamUiInput } from "@/lib/validators/registerTeamUiSchema";
 import { DEFAULT_PLAYERS } from "@/components/register/defaults";
 import { createTicketAction } from "@/components/register/actions";
+
 import { Field, ErrorText } from "@/components/ui/Field";
 import { Label } from "@/components/ui/Label";
 import { Input } from "@/components/ui/Input";
@@ -40,13 +39,66 @@ function Accordion({
   );
 }
 
-type PresignResponse =
-  | { uploadUrl: string; publicUrl: string; key: string }
-  | { error: string };
+async function presignAndUploadLogo(file: File) {
+  const res = await fetch("/api/s3/presign-logo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type || "image/png",
+    }),
+  });
+  if (!res.ok) throw new Error("Logo presign failed");
+  const data = await res.json();
+
+  // upload to S3
+  const put = await fetch(data.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type || "image/png" },
+    body: file,
+  });
+  if (!put.ok) throw new Error("Logo upload failed");
+
+  return { logoKey: data.key as string, logoUrl: data.publicUrl as string, logoFileName: file.name };
+}
+
+async function presignAndUploadGuidelines(file: File) {
+  const res = await fetch("/api/s3/presign-guidelines", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type || "application/pdf",
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Guidelines presign failed");
+
+  const put = await fetch(data.uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type || "application/pdf",
+    },
+    body: file,
+  });
+
+  if (!put.ok) {
+    const txt = await put.text().catch(() => "");
+    throw new Error(`Guidelines upload failed (${put.status}) ${txt}`);
+  }
+
+  return {
+    brandGuidelinesKey: data.key,
+    brandGuidelinesUrl: data.publicUrl,
+    brandGuidelinesFileName: file.name,
+  };
+}
+
 
 export default function RegisterForm() {
   const router = useRouter();
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [topError, setTopError] = useState<string | null>(null);
 
   const form = useForm<RegisterTeamUiInput>({
     resolver: zodResolver(registerTeamUiSchema),
@@ -59,6 +111,19 @@ export default function RegisterForm() {
       captainName: "",
       captainPhone: "",
       players: DEFAULT_PLAYERS,
+
+      // ✅ important: exist in form values
+      confirmEmployees: false,
+      acceptTerms: false,
+
+      // ✅ will be filled after S3 upload
+      logoFileName: "",
+      logoKey: "",
+      logoUrl: "",
+
+      brandGuidelinesFileName: "",
+      brandGuidelinesKey: "",
+      brandGuidelinesUrl: "",
     } as any,
   });
 
@@ -67,54 +132,23 @@ export default function RegisterForm() {
   const { fields } = useFieldArray({ control, name: "players" });
 
   const onSubmit = handleSubmit(async (values) => {
-    setSubmitError(null);
+    setTopError(null);
 
     try {
-      // 1) Get the selected logo file (PNG)
+      // ✅ upload logo file first (must exist)
       const logoFile = (values as any).logoPng as File | undefined;
-      if (!logoFile) {
-        setSubmitError("Please upload the company logo (PNG).");
-        return;
-      }
-      if (logoFile.type !== "image/png") {
-        setSubmitError("Company logo must be a PNG file.");
-        return;
-      }
+      if (!logoFile) throw new Error("Please upload company logo (PNG).");
 
-      // 2) Ask server for a presigned URL
-      const presignRes = await fetch("/api/s3/presign-logo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: logoFile.name,
-          contentType: logoFile.type,
-        }),
-      });
+      const logo = await presignAndUploadLogo(logoFile);
 
-      const presignData = (await presignRes.json()) as PresignResponse;
-      if (!presignRes.ok || "error" in presignData) {
-        setSubmitError(
-          "error" in presignData
-            ? presignData.error
-            : "Failed to get upload URL."
-        );
-        return;
+      // ✅ optional guidelines upload
+      let guidelines: any = {};
+      const guidelinesFile = (values as any).brandGuidelinesPdf as File | undefined;
+      if (guidelinesFile) {
+        guidelines = await presignAndUploadGuidelines(guidelinesFile);
       }
 
-      // 3) Upload the file directly to S3 using PUT
-      const putRes = await fetch(presignData.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "image/png" },
-        body: logoFile,
-      });
-
-      if (!putRes.ok) {
-        setSubmitError("Logo upload failed. Please try again.");
-        return;
-      }
-
-      // 4) Call the server action WITHOUT file objects
-      // IMPORTANT: We must not send File() to server action to avoid 413 limits.
+      // ✅ send ONLY strings to server action (no File objects)
       const payload = {
         companyName: values.companyName,
         email: values.email,
@@ -124,28 +158,29 @@ export default function RegisterForm() {
         captainPhone: values.captainPhone,
         players: values.players,
 
-        // ✅ store logo location in DB
-        logoUrl: presignData.publicUrl,
-        logoKey: presignData.key,
-        logoFileName: logoFile.name,
+        confirmEmployees: values.confirmEmployees,
+        acceptTerms: values.acceptTerms,
 
-        // optional: brand guideline file name only (you can later add S3 upload similarly)
-        brandGuidelinesFileName: (values as any).brandGuidelinesPdf?.name,
+        logoFileName: logo.logoFileName,
+        logoKey: logo.logoKey,
+        logoUrl: logo.logoUrl,
+
+        brandGuidelinesFileName: guidelines.brandGuidelinesFileName || "",
+        brandGuidelinesKey: guidelines.brandGuidelinesKey || "",
+        brandGuidelinesUrl: guidelines.brandGuidelinesUrl || "",
       };
 
-      const res = await createTicketAction(payload as any);
+      const res = await createTicketAction(payload);
       router.push(`/register/success?token=${encodeURIComponent(res.token)}`);
     } catch (e: any) {
-      setSubmitError(e?.message || "Something went wrong. Please try again.");
+      setTopError(e?.message || "Something went wrong. Please try again.");
     }
   });
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {submitError ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {submitError}
-        </div>
+      {topError ? (
+        <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">{topError}</div>
       ) : null}
 
       <div className="rounded-2xl border border-black/10 bg-white/80 shadow-soft p-6 space-y-4">
@@ -156,31 +191,26 @@ export default function RegisterForm() {
             <Input {...register("companyName")} />
             <ErrorText>{errors.companyName?.message}</ErrorText>
           </Field>
-
           <Field>
             <Label>Email</Label>
             <Input type="email" {...register("email")} />
             <ErrorText>{errors.email?.message}</ErrorText>
           </Field>
-
           <Field>
             <Label>Manager Name</Label>
             <Input {...register("managerName")} />
             <ErrorText>{errors.managerName?.message}</ErrorText>
           </Field>
-
           <Field>
             <Label>Phone</Label>
             <Input {...register("phone")} />
             <ErrorText>{errors.phone?.message}</ErrorText>
           </Field>
-
           <Field>
             <Label>Captain Name</Label>
             <Input {...register("captainName")} />
             <ErrorText>{errors.captainName?.message}</ErrorText>
           </Field>
-
           <Field>
             <Label>Captain Phone</Label>
             <Input {...register("captainPhone")} />
@@ -202,25 +232,21 @@ export default function RegisterForm() {
                     <Input {...register(`players.${idx}.fullName`)} />
                     <ErrorText>{pErr.fullName?.message}</ErrorText>
                   </Field>
-
                   <Field>
                     <Label>Phone</Label>
                     <Input {...register(`players.${idx}.phone`)} />
                     <ErrorText>{pErr.phone?.message}</ErrorText>
                   </Field>
-
                   <Field>
                     <Label>Jersey Number</Label>
                     <Input type="number" {...register(`players.${idx}.jerseyNumber`)} />
                     <ErrorText>{pErr.jerseyNumber?.message}</ErrorText>
                   </Field>
-
                   <Field>
                     <Label>Position</Label>
                     <Input {...register(`players.${idx}.position`)} />
                     <ErrorText>{pErr.position?.message}</ErrorText>
                   </Field>
-
                   <Field className="md:col-span-2">
                     <Label>Jersey Size</Label>
                     <select
@@ -244,6 +270,7 @@ export default function RegisterForm() {
 
       <div className="rounded-2xl border border-black/10 bg-white/80 shadow-soft p-6 space-y-4">
         <h2 className="font-display text-2xl text-bootred">Brand Uploads</h2>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field>
             <Label>Company Logo (PNG) *</Label>
@@ -279,19 +306,14 @@ export default function RegisterForm() {
         </div>
 
         <div className="rounded-2xl border border-black/10 bg-white/60 p-4 space-y-3">
+          {/* ✅ register checkboxes properly */}
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border border-black/20 accent-bootred"
-              onChange={(e) =>
-                setValue("confirmEmployees" as any, e.target.checked as any, {
-                  shouldValidate: true,
-                })
-              }
+              {...register("confirmEmployees")}
             />
-            <span className="text-sm text-black/75">
-              I confirm all 10 players are employees of the company.
-            </span>
+            <span className="text-sm text-black/75">I confirm all 10 players are employees of the company.</span>
           </label>
           <ErrorText>{(errors as any).confirmEmployees?.message}</ErrorText>
 
@@ -299,15 +321,9 @@ export default function RegisterForm() {
             <input
               type="checkbox"
               className="h-4 w-4 rounded border border-black/20 accent-bootred"
-              onChange={(e) =>
-                setValue("acceptTerms" as any, e.target.checked as any, {
-                  shouldValidate: true,
-                })
-              }
+              {...register("acceptTerms")}
             />
-            <span className="text-sm text-black/75">
-              I agree to the Terms & Conditions.
-            </span>
+            <span className="text-sm text-black/75">I agree to the Terms & Conditions.</span>
           </label>
           <ErrorText>{(errors as any).acceptTerms?.message}</ErrorText>
         </div>

@@ -1,111 +1,210 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import type { TeamPayload } from "@/lib/tickets/types";
 
-type Props = { teams: TeamPayload[] };
+type TeamRow = {
+  id: string;
+  teamNumber: number;
+  companyName: string;
+  managerName: string;
+  phone: string;
+  captainName: string;
+  captainPhone: string;
+  email: string;
 
-export default function TeamsTableClient({ teams }: Props) {
+  checkedIn?: boolean;
+  checkedInAt?: string | null;
+
+  // files
+  logoUrl?: string;
+  logoFileName?: string;
+
+  brandGuidelinesUrl?: string;
+  brandGuidelinesFileName?: string;
+};
+
+function fmt(dt?: string | null) {
+  if (!dt) return "—";
+  try {
+    return new Date(dt).toLocaleString();
+  } catch {
+    return dt;
+  }
+}
+
+function dlName(fallback: string, name?: string) {
+  if (!name || !name.trim()) return fallback;
+  return name;
+}
+
+export default function TeamsTableClient({ teams }: { teams: TeamRow[] }) {
   const [q, setQ] = useState("");
-  const [minPlayers, setMinPlayers] = useState<"all" | "10" | "lt10">("all");
+  const [filter, setFilter] = useState<"all" | "checked" | "pending">("all");
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return teams.filter((t) => {
-      const matchesQuery =
-        !query ||
-        String(t.teamNumber).includes(query) ||
-        (t.companyName || "").toLowerCase().includes(query) ||
-        (t.managerName || "").toLowerCase().includes(query) ||
-        (t.captainName || "").toLowerCase().includes(query) ||
-        (t.phone || "").toLowerCase().includes(query) ||
-        (t.captainPhone || "").toLowerCase().includes(query) ||
-        (t.email || "").toLowerCase().includes(query);
 
-      const matchesPlayers =
-        minPlayers === "all" ? true : minPlayers === "10" ? t.players.length === 10 : t.players.length < 10;
-
-      return matchesQuery && matchesPlayers;
-    });
-  }, [teams, q, minPlayers]);
+    return teams
+      .filter((t) => {
+        if (filter === "checked") return !!t.checkedIn;
+        if (filter === "pending") return !t.checkedIn;
+        return true;
+      })
+      .filter((t) => {
+        if (!query) return true;
+        return (
+          String(t.teamNumber).includes(query) ||
+          (t.companyName || "").toLowerCase().includes(query) ||
+          (t.managerName || "").toLowerCase().includes(query) ||
+          (t.phone || "").toLowerCase().includes(query) ||
+          (t.captainName || "").toLowerCase().includes(query) ||
+          (t.captainPhone || "").toLowerCase().includes(query)
+        );
+      });
+  }, [teams, q, filter]);
 
   return (
-    <div className="rounded-2xl border border-black/10 bg-white/80 backdrop-blur shadow-soft overflow-hidden">
-      <div className="px-5 py-4 border-b border-black/10 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <div className="text-sm font-semibold text-black/75">Total: {teams.length}</div>
-          <div className="text-xs text-black/50">Showing: {filtered.length}</div>
+    <div className="rounded-2xl border border-black/10 bg-white/80 shadow-soft overflow-hidden">
+      {/* Toolbar */}
+      <div className="p-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+        <div className="flex gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className={`px-3 py-2 rounded-xl text-sm border ${
+              filter === "all" ? "bg-bootred text-white border-bootred" : "bg-white border-black/10 text-black/70"
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("checked")}
+            className={`px-3 py-2 rounded-xl text-sm border ${
+              filter === "checked"
+                ? "bg-green-600 text-white border-green-600"
+                : "bg-white border-black/10 text-black/70"
+            }`}
+          >
+            Checked-in
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("pending")}
+            className={`px-3 py-2 rounded-xl text-sm border ${
+              filter === "pending"
+                ? "bg-amber-500 text-white border-amber-500"
+                : "bg-white border-black/10 text-black/70"
+            }`}
+          >
+            Pending
+          </button>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search team no / company / manager / captain / phone / email"
-            className="w-full sm:w-[380px] rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-bootred/50 focus:ring-2 focus:ring-bootred/10"
-          />
-          <select
-            value={minPlayers}
-            onChange={(e) => setMinPlayers(e.target.value as any)}
-            className="w-full sm:w-[180px] rounded-2xl border border-black/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-bootred/50 focus:ring-2 focus:ring-bootred/10"
-          >
-            <option value="all">All teams</option>
-            <option value="10">Players = 10</option>
-            <option value="lt10">Players &lt; 10</option>
-          </select>
-        </div>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search team no / company / manager / phone..."
+          className="w-full md:w-96 rounded-2xl border border-black/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-bootred/50 focus:ring-2 focus:ring-bootred/10"
+        />
       </div>
 
+      {/* Table */}
       <div className="overflow-auto">
-        <table className="min-w-[1100px] w-full text-sm">
-          <thead className="bg-cream border-b border-black/10">
+        <table className="min-w-[1400px] w-full text-sm">
+          <thead className="bg-cream">
             <tr className="text-left">
-              <th className="px-5 py-3 font-semibold text-black/70">Team No</th>
-              <th className="px-5 py-3 font-semibold text-black/70">Company</th>
-              <th className="px-5 py-3 font-semibold text-black/70">Manager</th>
-              <th className="px-5 py-3 font-semibold text-black/70">Captain</th>
-              <th className="px-5 py-3 font-semibold text-black/70">Players</th>
-              <th className="px-5 py-3 font-semibold text-black/70">Actions</th>
+              <th className="px-4 py-3">Team #</th>
+              <th className="px-4 py-3">Company</th>
+              <th className="px-4 py-3">Manager</th>
+              <th className="px-4 py-3">Phone</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Checked-in at</th>
+              <th className="px-4 py-3">Downloads</th>
             </tr>
           </thead>
+
           <tbody>
-            {filtered.map((t) => (
-              <tr key={t.teamNumber} className="border-b border-black/5">
-                <td className="px-5 py-3 font-semibold text-bootbrown">{t.teamNumber}</td>
-                <td className="px-5 py-3">{t.companyName}</td>
-                <td className="px-5 py-3">
-                  {t.managerName} <span className="text-xs text-black/50">({t.phone})</span>
-                </td>
-                <td className="px-5 py-3">
-                  {t.captainName} <span className="text-xs text-black/50">({t.captainPhone})</span>
-                </td>
-                <td className="px-5 py-3">{t.players.length}</td>
-                <td className="px-5 py-3">
-                  <div className="flex gap-2 flex-wrap">
-                    <Link
-                      className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2 text-bootred font-semibold border border-bootred/30 hover:bg-white/80"
-                      href={`/admin/teams/${t.teamNumber}`}
-                    >
-                      View
-                    </Link>
-                    <a
-                      className="inline-flex items-center justify-center rounded-2xl bg-bootred px-4 py-2 text-white font-semibold shadow-soft hover:opacity-95"
-                      href={`/api/admin/ticket/${t.teamNumber}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Ticket PDF
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((t) => {
+              const ticketUrl = `/api/admin/ticket/${t.id}`; // ✅ adjust if you use token-based route
+              // If your ticket route is /api/ticket/[teamToken], change this to:
+              // const ticketUrl = `/api/ticket/${encodeURIComponent(t.teamToken)}`;
+
+              return (
+                <tr key={t.id} className="border-t border-black/5 align-top">
+                  <td className="px-4 py-3 font-semibold text-bootred">{t.teamNumber}</td>
+                  <td className="px-4 py-3">{t.companyName}</td>
+                  <td className="px-4 py-3">{t.managerName}</td>
+                  <td className="px-4 py-3">{t.phone}</td>
+
+                  <td className="px-4 py-3">
+                    {t.checkedIn ? (
+                      <span className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-green-700 border border-green-200">
+                        <span className="h-2 w-2 rounded-full bg-green-600" />
+                        Checked-in
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-amber-700 border border-amber-200">
+                        <span className="h-2 w-2 rounded-full bg-amber-500" />
+                        Pending
+                      </span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3">{fmt(t.checkedInAt)}</td>
+
+                  {/* ✅ Downloads */}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      {/* Logo */}
+                      {t.logoUrl ? (
+                        <a
+                          href={t.logoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          download={dlName(`team-${t.teamNumber}-logo.png`, t.logoFileName)}
+                          className="inline-flex items-center justify-center rounded-xl bg-white px-3 py-2 text-xs font-semibold border border-black/10 hover:bg-white/80"
+                        >
+                          Logo
+                        </a>
+                      ) : (
+                        <span className="text-xs text-black/40">Logo —</span>
+                      )}
+
+                      {/* Guidelines */}
+                      {t.brandGuidelinesUrl ? (
+                        <a
+                          href={t.brandGuidelinesUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          download={dlName(`team-${t.teamNumber}-guidelines.pdf`, t.brandGuidelinesFileName)}
+                          className="inline-flex items-center justify-center rounded-xl bg-white px-3 py-2 text-xs font-semibold border border-black/10 hover:bg-white/80"
+                        >
+                          Guidelines
+                        </a>
+                      ) : (
+                        <span className="text-xs text-black/40">Guidelines —</span>
+                      )}
+
+                      {/* Ticket */}
+                      <a
+                        href={ticketUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center rounded-xl bg-bootred px-3 py-2 text-xs font-semibold text-white hover:opacity-95"
+                      >
+                        Ticket PDF
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
 
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-5 py-6 text-black/60" colSpan={6}>
-                  No matching teams.
+                <td colSpan={7} className="px-4 py-8 text-center text-black/50">
+                  No teams found
                 </td>
               </tr>
             ) : null}

@@ -57,13 +57,6 @@ export default async function AdminTeamsPage() {
           >
             New Registration
           </Link>
-
-          <Link
-            href="/verify"
-            className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2.5 text-black/70 font-semibold border border-black/10 hover:bg-white/80"
-          >
-            QR Verify Screen
-          </Link>
         </div>
       </div>
 

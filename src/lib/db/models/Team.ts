@@ -31,6 +31,9 @@ const TeamSchema = new Schema(
 
     // optional
     brandGuidelinesFileName: { type: String, default: "" },
+    brandGuidelinesUrl: { type: String, default: "" },
+    brandGuidelinesKey: { type: String, default: "" },
+
 
     // ✅ TEAM ATTENDANCE (check-in)
     checkedIn: { type: Boolean, default: false },

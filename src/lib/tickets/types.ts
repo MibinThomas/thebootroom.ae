@@ -7,7 +7,7 @@ export type Player = {
 };
 
 export type TeamPayload = {
-  id?: string; // MongoDB _id (string)
+  id: string;
   teamNumber: number;
   companyName: string;
   email: string;
@@ -15,10 +15,17 @@ export type TeamPayload = {
   phone: string;
   captainName: string;
   captainPhone: string;
-  players: Player[];
+  players: any[];
+
+  logoUrl: string;
+  logoKey: string;
+
   logoFileName: string;
   brandGuidelinesFileName?: string;
-  logoUrl: string;
-logoKey: string;
 
+  // ✅ add these:
+  checkedIn?: boolean;
+  checkedInAt?: string | null;
+  checkInCount?: number;
 };
+

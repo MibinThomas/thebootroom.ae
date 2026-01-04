@@ -15,12 +15,17 @@ function toPayload(doc: any): TeamPayload {
     captainPhone: doc.captainPhone,
     players: doc.players,
 
-    // ✅ add these two fields (new)
+    // ✅ logo stored in S3
     logoUrl: doc.logoUrl,
     logoKey: doc.logoKey,
 
     logoFileName: doc.logoFileName,
     brandGuidelinesFileName: doc.brandGuidelinesFileName,
+
+    // ✅ attendance fields
+    checkedIn: doc.checkedIn ?? false,
+    checkedInAt: doc.checkedInAt ? new Date(doc.checkedInAt).toISOString() : null,
+    checkInCount: doc.checkInCount ?? 0,
   };
 }
 
@@ -56,4 +61,38 @@ export async function getTeamPayloadFromToken(teamToken: string) {
 
 export async function parseToken(teamToken: string): Promise<TeamTokenPayload | null> {
   return verifyTeamToken(teamToken);
+}
+
+/**
+ * ✅ Mark attendance (check-in). Idempotent:
+ * - If already checked-in, it will NOT reset time.
+ * - It increments checkInCount only on first check-in.
+ */
+export async function checkInTeamById(id: string) {
+  await dbConnect();
+
+  // Only update if not already checked-in
+  const updated = await Team.findOneAndUpdate(
+    { _id: id, checkedIn: { $ne: true } },
+    { $set: { checkedIn: true, checkedInAt: new Date() }, $inc: { checkInCount: 1 } },
+    { new: true }
+  ).lean();
+
+  // If already checked-in, fetch the current record
+  const doc = updated || (await Team.findById(id).lean());
+  return doc ? toPayload(doc) : null;
+}
+
+/**
+ * ✅ Optional: Undo check-in (admin tool)
+ */
+export async function uncheckInTeamById(id: string) {
+  await dbConnect();
+  const doc = await Team.findByIdAndUpdate(
+    id,
+    { $set: { checkedIn: false, checkedInAt: null } },
+    { new: true }
+  ).lean();
+
+  return doc ? toPayload(doc) : null;
 }

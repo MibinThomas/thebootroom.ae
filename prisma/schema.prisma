@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  teamName        String
+  companyName     String
+  companySector   String
+  companyAddress  String
+
+  managerName     String
+  managerEmail    String
+  managerPhone    String
+
+  captainName     String
+  captainEmail    String
+  captainPhone    String
+
+  logoUrl         String?
+  brandGuideUrl   String?
+  ticketPdfUrl    String?
+
+  attendance      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  players         Player[]
+}
+
+model Player {
+  id                String @id @default(auto()) @map("_id") @db.ObjectId
+  teamId            String @db.ObjectId
+
+  name              String
+  preferredPosition String
+  jerseySize        String
+
+  team              Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}

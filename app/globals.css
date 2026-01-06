@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles for The Bootroom application */
+:root {
+  /* CSS variables for fonts are injected via Next.js font loader. */
+}
+
+html,
+body {
+  min-height: 100%;
+  /* Set the overall page background to the primary red and use secondary text color for contrast */
+  @apply bg-primary text-secondary;
+}
+
+a {
+  @apply text-primary underline;
+}
+
+button {
+  @apply bg-secondary text-primary px-4 py-2 rounded uppercase tracking-wider;
+}
+
+input,
+textarea,
+select {
+  /* Use light panel background and secondary border to echo the retro design */
+  @apply bg-panel border border-secondary text-primary p-2 rounded w-full;
+}

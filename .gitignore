@@ -1,16 +1,1 @@
-node_modules/
-.next/
-out/
-dist/
-build/
-.env
-.env.local
-.env.*.local
-*.log
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-.vercel
-coverage/
-*.tsbuildinfo
+node_modules

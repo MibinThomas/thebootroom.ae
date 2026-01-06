@@ -39,6 +39,7 @@ model Player {
   name              String
   preferredPosition String
   jerseySize        String
+  jerseyNumber String?
 
   team              Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }

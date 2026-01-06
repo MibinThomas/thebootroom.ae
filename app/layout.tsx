@@ -22,10 +22,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${bebas.variable} ${poppins.variable}`}>
       <body className="font-body bg-background text-foreground min-h-screen">
         {/* Global header centered with logo and site title */}
-        <header className="flex flex-col items-center py-4 space-y-2 bg-background">
-          <img src="/logo.png" alt="The Bootroom logo" className="h-16 w-auto" />
-          <span className="text-3xl font-heading uppercase text-primary">The Bootroom</span>
-        </header>
+        <header className="flex flex-col items-center pt-3 pb-1 bg-background">
+  <img
+    src="/logo.png"
+    alt="The Bootroom logo"
+    className="h-14 w-auto"
+  />
+  <span className="text-2xl font-heading uppercase text-primary leading-tight">
+    The Bootroom
+  </span>
+</header>
         <main className="p-4">{children}</main>
       </body>
     </html>

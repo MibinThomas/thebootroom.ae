@@ -29,13 +29,15 @@ export async function POST(request: Request) {
   // Collect players from indexed fields
   const players: any[] = [];
   for (let i = 0; i < 10; i++) {
-    const name = formData.get(`players[${i}][name]`)?.toString() || '';
-    const jerseySize = formData.get(`players[${i}][jerseySize]`)?.toString() || '';
-    const preferredPosition = formData
-      .get(`players[${i}][preferredPosition]`)
-      ?.toString() || '';
-    players.push({ name, jerseySize, preferredPosition });
-  }
+  const name = formData.get(`players[${i}][name]`)?.toString() || "";
+  const jerseyNumber = formData.get(`players[${i}][jerseyNumber]`)?.toString() || ""; // ✅ add
+  const jerseySize = formData.get(`players[${i}][jerseySize]`)?.toString() || "";
+  const preferredPosition =
+    formData.get(`players[${i}][preferredPosition]`)?.toString() || "";
+
+  players.push({ name, jerseyNumber, jerseySize, preferredPosition }); // ✅ include
+}
+
 
   // Ensure directories exist
   const uploadsDir = path.join(process.cwd(), 'public', 'uploads');

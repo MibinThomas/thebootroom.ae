@@ -80,11 +80,17 @@ export default function TeamRegistrationForm() {
         body: formData,
       });
       if (response.ok) {
-        window.location.href = '/register/success';
+        const data = await response.json();
+        if (data?.teamId) {
+          window.location.href = `/register/success?teamId=${data.teamId}`;
+        } else {
+          window.location.href = '/register/success';
+        }
       } else {
         const data = await response.json();
         alert(data.error || 'Something went wrong.');
       }
+
     } catch (error) {
       console.error(error);
       alert('An unexpected error occurred.');
